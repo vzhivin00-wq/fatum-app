@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Анти-фаталистическое Таро</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --accent-color: #6060ff;
+            --gold-color: #d4af37;
+            --bg-color: #050510;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            background-color: var(--bg-color);
+            color: #e0e0ff;
+            font-family: 'Segoe UI', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            min-height: 100vh;
+            margin: 0;
+            overflow-y: auto;
+            -webkit-user-select: none;
+            user-select: none;
+            position: relative;
+        }
+
+        /* ===== ЗВЁЗДНЫЙ ФОН ===== */
+        #stars-canvas {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ===== НАПОМИНАНИЕ ===== */
+        #reminderBanner {
+            display: none;
+            position: fixed;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(96,96,255,0.15);
+            border: 1px solid rgba(96,96,255,0.4);
+            border-radius: 12px;
+            padding: 10px 18px;
+            font-size: 0.8rem;
+            color: #a0a0ff;
+            text-align: center;
+            z-index: 100;
+            max-width: 300px;
+            backdrop-filter: blur(6px);
+        }
+        #reminderBanner.show { display: block; }
+
+        /* ===== ОБЩИЕ СТИЛИ ЭКРАНОВ ===== */
+        .screen {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 16px;
+        }
+
+        /* ===== ЭКРАН ФОКУСИРОВКИ ===== */
+        .pulse-orb {
+            width: 110px;
+            height: 110px;
+            background: radial-gradient(circle, rgba(96,96,255,0.9) 0%, rgba(96,96,255,0) 70%);
+            border-radius: 50%;
+            margin: 48px 0 36px;
+            animation: pulseAnim 3s infinite ease-in-out;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        @keyframes pulseAnim {
+            0%   { transform: scale(1);   opacity: 0.5; }
+            50%  { transform: scale(1.4); opacity: 1; box-shadow: 0 0 50px var(--accent-color); }
+            100% { transform: scale(1);   opacity: 0.5; }
+        }
+
+        .focus-text {
+            font-size: 1.05rem;
+            line-height: 1.7;
+            max-width: 280px;
+            color: #a0a0ff;
+            text-align: center;
+            font-weight: 300;
+        }
+
+        /* ===== ЭКРАН ВЫБОРА РАСКЛАДА ===== */
+        .spread-title {
+            font-size: 1.1rem;
+            color: #a0a0ff;
+            margin: 16px 0 24px;
+            text-align: center;
+            font-weight: 300;
+        }
+
+        .spread-options {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            width: 100%;
+            max-width: 320px;
+        }
+
+        .spread-btn {
+            background: rgba(96,96,255,0.07);
+            border: 1px solid rgba(96,96,255,0.35);
+            border-radius: 16px;
+            padding: 18px 20px;
+            cursor: pointer;
+            text-align: left;
+            transition: 0.3s;
+            color: #e0e0ff;
+        }
+        .spread-btn:active { transform: scale(0.97); background: rgba(96,96,255,0.15); }
+
+        .spread-btn-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--gold-color);
+            margin-bottom: 4px;
+        }
+        .spread-btn-desc {
+            font-size: 0.82rem;
+            color: #8080b0;
+            line-height: 1.4;
+        }
+
+        /* ===== КНОПКА ПОДПИСКИ ===== */
+        .subscribe-divider {
+            width: 100%;
+            max-width: 320px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 20px 0 8px;
+            color: #404060;
+            font-size: 0.75rem;
+        }
+        .subscribe-divider::before,
+        .subscribe-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: rgba(96,96,255,0.15);
+        }
+
+        .btn-subscribe {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            max-width: 320px;
+            margin-bottom: 24px;
+            background: rgba(212,175,55,0.08);
+            border: 1px solid rgba(212,175,55,0.4);
+            border-radius: 16px;
+            padding: 14px 20px;
+            color: var(--gold-color);
+            font-size: 0.88rem;
+            cursor: pointer;
+            letter-spacing: 0.5px;
+            transition: 0.3s;
+        }
+        .btn-subscribe:active { transform: scale(0.97); background: rgba(212,175,55,0.15); }
+
+        /* ===== PAYWALL ЭКРАН ===== */
+        .paywall-orb {
+            width: 90px;
+            height: 90px;
+            background: radial-gradient(circle, rgba(96,96,255,0.5) 0%, rgba(96,96,255,0) 70%);
+            border-radius: 50%;
+            margin: 48px 0 24px;
+            animation: pulseAnim 3s infinite ease-in-out;
+            font-size: 2.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .paywall-title {
+            font-size: 1.25rem;
+            color: var(--gold-color);
+            font-weight: bold;
+            margin-bottom: 14px;
+            text-align: center;
+        }
+
+        .paywall-desc {
+            font-size: 0.9rem;
+            color: #a0a0c0;
+            line-height: 1.65;
+            max-width: 280px;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .paywall-timer {
+            font-size: 0.8rem;
+            color: #6060aa;
+            margin-bottom: 36px;
+            letter-spacing: 1px;
+        }
+        .paywall-timer span {
+            color: #9090cc;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+        }
+
+
+
+        .paywall-back {
+            font-size: 0.8rem;
+            color: #505080;
+            cursor: pointer;
+            margin-top: 4px;
+            text-decoration: underline;
+            text-underline-offset: 3px;
+        }
+        .paywall-back:active { color: #8080aa; }
+
+        /* ===== КАРТОЧНЫЙ ЭКРАН ===== */
+        #appScreen { padding-top: 16px; padding-bottom: 32px; }
+
+        .spread-label {
+            font-size: 0.78rem;
+            color: #6060aa;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 16px;
+        }
+
+        .day-badge {
+            font-size: 0.72rem;
+            color: var(--gold-color);
+            border: 1px solid rgba(212,175,55,0.3);
+            border-radius: 20px;
+            padding: 3px 10px;
+            margin-bottom: 14px;
+            letter-spacing: 1px;
+        }
+
+        .cards-row {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: nowrap;
+        }
+
+        .card-slot {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-slot-label {
+            font-size: 0.7rem;
+            color: #6060aa;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-align: center;
+        }
+
+        .card-container {
+            perspective: 1000px;
+            -webkit-tap-highlight-color: transparent;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .spread-1 .card-container  { width: 200px; height: 300px; }
+        .spread-3 .card-container  { width: 96px;  height: 144px; }
+        .spread-cross .card-container { width: 80px; height: 120px; }
+
+        .card-inner {
+            width: 100%;
+            height: 100%;
+            transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transform-style: preserve-3d;
+            -webkit-transform-style: preserve-3d;
+            position: relative;
+        }
+
+        .card-inner.is-flipped { transform: rotateY(180deg); }
+
+        .card-face {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            border-radius: 10px;
+            border: 1px solid rgba(160,160,255,0.15);
+        }
+
+        .card-front {
+            background: url('images/deck_back.png') center/cover;
+            box-shadow: 0 0 20px rgba(96,96,255,0.2);
+        }
+
+        .card-back {
+            transform: rotateY(180deg);
+            background: #111122;
+        }
+        .card-back img {
+            width: 100%; height: 100%;
+            object-fit: cover;
+            border-radius: 10px;
+        }
+
+        /* ===== ТЕКСТ КАРТЫ ===== */
+        .cards-info {
+            width: 100%;
+            max-width: 340px;
+            margin-top: 20px;
+        }
+
+        .card-info-block {
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.6s ease, visibility 0.6s ease;
+            text-align: center;
+            padding: 14px 10px;
+            border-radius: 14px;
+            margin-bottom: 10px;
+            background: rgba(96,96,255,0.04);
+            border: 1px solid rgba(96,96,255,0.1);
+        }
+        .card-info-block.visible { opacity: 1; visibility: visible; }
+
+        .card-info-position {
+            font-size: 0.72rem;
+            color: #6060aa;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 4px;
+        }
+
+        .card-info-title {
+            font-size: 1.1rem;
+            color: var(--gold-color);
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .card-info-desc {
+            font-size: 0.88rem;
+            line-height: 1.55;
+            color: #c0c0e0;
+        }
+
+        /* ===== КНОПКИ ===== */
+        .controls {
+            display: flex;
+            gap: 12px;
+            width: 100%;
+            max-width: 340px;
+            margin-top: 16px;
+        }
+
+        .btn {
+            flex: 1;
+            background: rgba(96,96,255,0.1);
+            border: 1px solid var(--accent-color);
+            color: #fff;
+            padding: 13px;
+            border-radius: 14px;
+            font-size: 0.82rem;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: 0.3s;
+        }
+        .btn-share { border-color: var(--gold-color); color: var(--gold-color); }
+        .btn:active { transform: scale(0.95); background: rgba(96,96,255,0.2); }
+
+        /* ===== КЕЛЬТСКИЙ КРЕСТ ===== */
+        .cross-grid {
+            display: grid;
+            grid-template-columns: 80px 80px 80px;
+            grid-template-rows: 120px 120px 120px;
+            gap: 8px;
+            justify-content: center;
+        }
+        .cross-grid .card-slot:nth-child(1) { grid-column: 2; grid-row: 1; }
+        .cross-grid .card-slot:nth-child(2) { grid-column: 1; grid-row: 2; }
+        .cross-grid .card-slot:nth-child(3) { grid-column: 2; grid-row: 2; }
+        .cross-grid .card-slot:nth-child(4) { grid-column: 3; grid-row: 2; }
+        .cross-grid .card-slot:nth-child(5) { grid-column: 2; grid-row: 3; }
+
+        /* ===== КНОПКА НАСТРОЕК ===== */
+        .settings-btn {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            width: 36px;
+            height: 36px;
+            background: rgba(96,96,255,0.1);
+            border: 1px solid rgba(96,96,255,0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 1rem;
+            z-index: 20;
+            transition: 0.2s;
+            color: #6060aa;
+        }
+        .settings-btn:active { background: rgba(96,96,255,0.2); transform: rotate(30deg); }
+
+        /* ===== ЭКРАН НАСТРОЕК ===== */
+        .settings-title {
+            font-size: 1.15rem;
+            color: #e0e0ff;
+            font-weight: 400;
+            text-align: center;
+            margin: 32px 0 24px;
+        }
+
+        .settings-row {
+            width: 100%;
+            max-width: 320px;
+            background: rgba(96,96,255,0.06);
+            border: 1px solid rgba(96,96,255,0.15);
+            border-radius: 14px;
+            padding: 16px 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .settings-row-label {
+            font-size: 0.82rem;
+            color: #8080b0;
+            margin-bottom: 2px;
+        }
+
+        .settings-row-value {
+            font-size: 1rem;
+            color: #e0e0ff;
+        }
+
+        .settings-row-btn {
+            font-size: 0.75rem;
+            color: var(--accent-color);
+            cursor: pointer;
+            border: 1px solid rgba(96,96,255,0.3);
+            border-radius: 8px;
+            padding: 4px 10px;
+            transition: 0.2s;
+            background: none;
+        }
+        .settings-row-btn:active { background: rgba(96,96,255,0.15); }
+
+        .settings-back {
+            font-size: 0.8rem;
+            color: #505080;
+            cursor: pointer;
+            margin-top: 12px;
+            text-decoration: underline;
+            text-underline-offset: 3px;
+        }
+        .settings-back:active { color: #8080aa; }
+
+        /* ===== ПОДСКАЗКА НА КАРТЕ ===== */
+        /* ===== ПОДСКАЗКА НА КАРТЕ ===== */
+        .tap-hint {
+            font-size: 0.78rem;
+            color: #6060aa;
+            letter-spacing: 1.5px;
+            text-align: center;
+            margin-bottom: 12px;
+            animation: hintPulse 2s ease infinite;
+        }
+        @keyframes hintPulse {
+            0%, 100% { opacity: 0.4; }
+            50%       { opacity: 1; }
+        }
+
+        /* ===== ЭКРАН ВЫБОРА ЗНАКА ЗОДИАКА ===== */
+        .zodiac-title {
+            font-size: 1.15rem;
+            color: #e0e0ff;
+            font-weight: 400;
+            text-align: center;
+            margin: 32px 0 6px;
+        }
+        .zodiac-subtitle {
+            font-size: 0.82rem;
+            color: #6060aa;
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        .zodiac-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            width: 100%;
+            max-width: 320px;
+            margin-bottom: 16px;
+        }
+        .zodiac-btn {
+            background: rgba(96,96,255,0.07);
+            border: 1px solid rgba(96,96,255,0.2);
+            border-radius: 12px;
+            padding: 10px 6px;
+            cursor: pointer;
+            text-align: center;
+            transition: 0.2s;
+            color: #a0a0cc;
+            font-size: 0.72rem;
+            line-height: 1.4;
+        }
+        .zodiac-btn .zodiac-emoji { font-size: 1.4rem; display: block; margin-bottom: 3px; }
+        .zodiac-btn:active,
+        .zodiac-btn.selected {
+            background: rgba(96,96,255,0.2);
+            border-color: var(--accent-color);
+            color: #e0e0ff;
+        }
+
+        /* ===== АНИМАЦИЯ ПЕРЕХОДА ===== */
+        /* ===== АНИМАЦИЯ ПЕРЕХОДА ===== */
+        .screen-fade { animation: fadeIn 0.5s ease forwards; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+<canvas id="stars-canvas"></canvas>
+<div id="reminderBanner">✨ Ваша карта дня уже ждёт вас</div>
+
+<!-- Экран 1: Фокусировка -->
+<div id="focusScreen" class="screen">
+    <div class="pulse-orb" onclick="goToSpread()"></div>
+    <div class="focus-text">Сформулируйте ваш запрос...<br>Почувствуйте его внутри...<br>Коснитесь сферы, когда будете готовы.</div>
+</div>
+
+<!-- Экран 1.5: Выбор знака зодиака (первый запуск) -->
+<div id="zodiacScreen" class="screen" style="display:none">
+    <div class="zodiac-title">Ваш знак зодиака</div>
+    <div class="zodiac-subtitle">Один раз — чтобы послания были точнее</div>
+    <div class="zodiac-grid">
+        <div class="zodiac-btn" onclick="selectZodiac('Овен')"><span class="zodiac-emoji">♈</span>Овен</div>
+        <div class="zodiac-btn" onclick="selectZodiac('Телец')"><span class="zodiac-emoji">♉</span>Телец</div>
+        <div class="zodiac-btn" onclick="selectZodiac('Близнецы')"><span class="zodiac-emoji">♊</span>Близнецы</div>
+        <div class="zodiac-btn" onclick="selectZodiac('Рак')"><span class="zodiac-emoji">♋</span>Рак</div>
+        <div class="zodiac-btn" onclick="selectZodiac('Лев')"><span class="zodiac-emoji">♌</span>Лев</div>
+        <div class="zodiac-btn" onclick="selectZodiac('Дева')"><span class="zodiac-emoji">♍</span>Дева</div>
+        <div class="zodiac-btn" onclick="selectZodiac('Весы')"><span class="zodiac-emoji">♎</span>Весы</div>
+        <div class="zodiac-btn" onclick="selectZodiac('Скорпион')"><span class="zodiac-emoji">♏</span>Скорпион</div>
+        <div class="zodiac-btn" onclick="selectZodiac('Стрелец')"><span class="zodiac-emoji">♐</span>Стрелец</div>
+        <div class="zodiac-btn" onclick="selectZodiac('Козерог')"><span class="zodiac-emoji">♑</span>Козерог</div>
+        <div class="zodiac-btn" onclick="selectZodiac('Водолей')"><span class="zodiac-emoji">♒</span>Водолей</div>
+        <div class="zodiac-btn" onclick="selectZodiac('Рыбы')"><span class="zodiac-emoji">♓</span>Рыбы</div>
+    </div>
+</div>
+
+<!-- Экран 2: Выбор расклада -->
+<div id="spreadScreen" class="screen" style="display:none">
+    <div class="settings-btn" onclick="openSettings()">⚙</div>
+    <div class="spread-title">Выберите расклад</div>
+    <div class="spread-options">
+        <div class="spread-btn" onclick="startSpread('one')">
+            <div class="spread-btn-title">☽ Карта дня</div>
+            <div class="spread-btn-desc">Одна карта — одно послание. Фокус на сегодня.</div>
+        </div>
+        <div class="spread-btn" onclick="startSpread('three')">
+            <div class="spread-btn-title">◈ Прошлое · Настоящее · Будущее</div>
+            <div class="spread-btn-desc">Три карты раскрывают динамику вашей ситуации.</div>
+        </div>
+        <div class="spread-btn" onclick="startSpread('cross')">
+            <div class="spread-btn-title">✦ Кельтский крест</div>
+            <div class="spread-btn-desc">Пять карт — глубокий взгляд на ситуацию со всех сторон.</div>
+        </div>
+    </div>
+    <div class="subscribe-divider">уведомления</div>
+    <div class="btn-subscribe" id="subscribeBtn" onclick="subscribeToDaily()">
+        <span>🔔</span>
+        <span id="subscribeBtnText">Получать карту дня в Telegram</span>
+    </div>
+</div>
+
+<!-- Экран 2.7: Настройки -->
+<div id="settingsScreen" class="screen" style="display:none">
+    <div class="settings-title">Настройки</div>
+
+    <div class="settings-row">
+        <div>
+            <div class="settings-row-label">Знак зодиака</div>
+            <div class="settings-row-value" id="settingsZodiacValue">—</div>
+        </div>
+        <button class="settings-row-btn" onclick="changeZodiac()">Изменить</button>
+    </div>
+
+    <div class="settings-row">
+        <div>
+            <div class="settings-row-label">Уведомления</div>
+            <div class="settings-row-value" id="settingsNotifValue">Выкл</div>
+        </div>
+        <button class="settings-row-btn" onclick="subscribeToDaily()">Включить</button>
+    </div>
+
+    <div class="settings-back" onclick="closeSettings()">← Назад</div>
+</div>
+
+<!-- Экран 3: Лимит исчерпан -->
+<div id="paywallScreen" class="screen" style="display:none">
+    <div class="paywall-orb">☽</div>
+    <div class="paywall-title">На сегодня всё</div>
+    <p class="paywall-desc">Одно послание в день — этого достаточно.<br>Дайте карте время осесть внутри.</p>
+    <div class="paywall-timer">Новый расклад через <span id="paywallCountdown">—</span></div>
+    <div class="paywall-back" onclick="backFromPaywall()">← Вернуться назад</div>
+</div>
+
+<!-- Экран 4: Карты -->
+<div id="appScreen" class="screen" style="display:none">
+    <div class="spread-label" id="spreadLabel"></div>
+    <div id="dayBadge" class="day-badge" style="display:none">☀︎ Карта дня</div>
+    <div class="tap-hint" id="tapHint">✦ нажмите на карту, чтобы открыть</div>
+    <div id="cardsArea"></div>
+    <div class="cards-info" id="cardsInfo"></div>
+    <div class="controls">
+        <button class="btn btn-share" onclick="shareResult()">Поделиться</button>
+        <button class="btn" onclick="resetToStart()">Назад</button>
+    </div>
+</div>
+
+<script>
+    // ===== TELEGRAM =====
+    let tg = window.Telegram?.WebApp || {
+        expand(){}, ready(){},
+        HapticFeedback: { impactOccurred(){}, notificationOccurred(){} },
+        openTelegramLink(url){ window.open(url,'_blank'); }
+    };
+    tg.expand();
+    tg.ready();
+
+    // ===== ЗВЁЗДНЫЙ ФОН =====
+    (function() {
+        const canvas = document.getElementById('stars-canvas');
+        const ctx = canvas.getContext('2d');
+        let stars = [];
+
+        function resize() {
+            canvas.width  = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        function initStars() {
+            stars = [];
+            for (let i = 0; i < 160; i++) {
+                stars.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    r: Math.random() * 1.2 + 0.2,
+                    alpha: Math.random(),
+                    speed: Math.random() * 0.004 + 0.001,
+                    phase: Math.random() * Math.PI * 2
+                });
+            }
+        }
+
+        function draw(ts) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            stars.forEach(s => {
+                s.alpha = 0.3 + 0.7 * (0.5 + 0.5 * Math.sin(ts * s.speed + s.phase));
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(180,180,255,${s.alpha})`;
+                ctx.fill();
+            });
+            requestAnimationFrame(draw);
+        }
+
+        resize();
+        initStars();
+        requestAnimationFrame(draw);
+        window.addEventListener('resize', () => { resize(); initStars(); });
+    })();
+
+    // ===== ДАННЫЕ КАРТ =====
+    const cards = [
+        { title: "0. Шут", desc: "Вселенная давно ждёт, когда вы перестанете готовиться и просто сделаете шаг. Лучшее, что с вами случалось, начиналось без гарантий. Страх — это компас, он указывает именно туда, куда надо идти. Сегодня сделайте одно маленькое действие, которое вы откладывали из-за страха ошибиться.", image: "images/card_0.png", accent: "#7070ff" },
+        { title: "I. Маг", desc: "Всё, что нужно, уже есть у вас — навыки, связи, идеи. Вы просто ждёте какого-то особого момента, который никогда не наступит сам. Запишите прямо сейчас три ресурса, которые у вас есть, и один конкретный шаг, который можно сделать сегодня.", image: "images/card_1.png", accent: "#ff6060" },
+        { title: "II. Жрица", desc: "Вы уже знаете ответ — он живёт в том тихом ощущении, которое вы привыкли заглушать логикой и чужими мнениями. Прислушайтесь к телу: где напряжение, а где облегчение? Доверьтесь первой реакции, которая возникла ещё до того, как вы начали думать.", image: "images/card_2.png", accent: "#60c0ff" },
+        { title: "III. Императрица", desc: "Вы пытаетесь расти из истощения — и удивляетесь, почему не получается. Природа не цветёт в засуху. Сегодня ваша задача — не сделать больше, а восстановиться: поесть нормально, поспать, побыть в тишине. Из полноты рождается всё остальное.", image: "images/card_3.png", accent: "#60d080" },
+        { title: "IV. Император", desc: "Хаос вокруг растёт ровно настолько, насколько вы позволяете ему заходить внутрь. Не надо менять всё сразу. Выберите одну область жизни и введите в ней одно чёткое правило, которое будет работать только на вас. Порядок начинается с одного решения.", image: "images/card_4.png", accent: "#c06030" },
+        { title: "V. Иерофант", desc: "Где-то внутри сидит чужой голос, который говорит «так не делают» или «ты не имеешь права». Спросите себя честно: это ваше убеждение — или то, что вам когда-то внушили? Запишите одно правило, которому вы следуете из страха, а не из ценностей.", image: "images/card_5.png", accent: "#d4af37" },
+        { title: "VI. Влюбленные", desc: "Вы тянете с решением, потому что боитесь выбрать неправильно. Но нерешённость — это тоже выбор, и он уже стоит вам энергии. Нет идеального пути — есть путь, который вы делаете своим. Примите решение сегодня и живите с ним честно.", image: "images/card_6.png", accent: "#ff80a0" },
+        { title: "VII. Колесница", desc: "Вы движетесь, но внутри что-то тянет назад — сомнение, старая боль, чужое мнение. Победа достаётся не самому быстрому, а тому, кто не останавливается. Определите прямо сейчас: что конкретно мешает вам двигаться, и уберите это из поля зрения хотя бы на сегодня.", image: "images/card_7.png", accent: "#4080ff" },
+        { title: "VIII. Сила", desc: "То, что пугает вас в себе — не слабость, а необузданная энергия, которая ищет выход. Не давите её — направьте. Подумайте: какая эмоция сейчас сильнее всего? Найдите для неё легальный выход — спорт, разговор, бумага и ручка.", image: "images/card_8.png", accent: "#ff9040" },
+        { title: "IX. Отшельник", desc: "Вы ищете ответы в чужих словах, лентах, советах — а они живут в тишине внутри вас. Свет фонаря Отшельника освещает только один шаг вперёд — и этого достаточно. Уберите телефон на час и побудьте наедине с вопросом, который вас беспокоит.", image: "images/card_9.png", accent: "#a0a0c0" },
+        { title: "X. Колесо Фортуны", desc: "То, что рушится или уходит — освобождает место. Колесо не спрашивает разрешения, но оно всегда возвращает вас в точку роста. Вместо вопроса «почему это происходит со мной» спросите: «что это открывает передо мной?» Ответ удивит.", image: "images/card_10.png", accent: "#d4af37" },
+        { title: "XI. Справедливость", desc: "Вселенная не забывает ничего — ни хорошего, что вы сделали, ни того, на что закрывали глаза. Сейчас время честности с собой. Есть ли ситуация, которую вы избегаете решать, потому что это неудобно? Один честный разговор или решение изменит расклад.", image: "images/card_11.png", accent: "#60c0ff" },
+        { title: "XII. Повешенный", desc: "Вы застряли — и это не провал, это пауза, которую жизнь даёт насильно, потому что добровольно вы бы не остановились. Используйте её. Запишите, от чего вы устали и что давно хотели переосмыслить. Ответ уже формируется внутри.", image: "images/card_12.png", accent: "#8060c0" },
+        { title: "XIII. Смерть", desc: "Что-то в вашей жизни уже завершилось — отношения, этап, версия себя. Продолжать держаться за это больнее, чем отпустить. Это не конец — это расчистка. Назовите одну вещь, которую пора отпустить, и сделайте символическое действие прямо сегодня.", image: "images/card_13.png", accent: "#404060" },
+        { title: "XIV. Умеренность", desc: "Вы живёте в крайностях — всё или ничего, идеально или незачем. Но именно в точке между напряжением и покоем рождается что-то настоящее. Найдите сегодня одну сферу, где вы перегибаете палку, и осознанно снизьте интенсивность вдвое.", image: "images/card_14.png", accent: "#60d0c0" },
+        { title: "XV. Дьявол", desc: "Цепи на этой карте не замкнуты — их можно снять. Но сначала нужно признать: что именно держит вас? Привычка, страх, зависимость от чужого одобрения? Назовите это своим именем вслух или на бумаге. Осознанное — уже наполовину свободно.", image: "images/card_15.png", accent: "#c03030" },
+        { title: "XVI. Башня", desc: "Молния бьёт только в то, что уже давно трещало по швам. Это не катастрофа — это то, что вы откладывали. Не тратьте силы на спасение обломков. Спросите себя: что из рухнувшего я на самом деле рад отпустить? Вот с этого и начинается новое.", image: "images/card_16.png", accent: "#ff4040" },
+        { title: "XVII. Звезда", desc: "После самого тяжёлого периода внутри всегда остаётся что-то живое — тихая надежда, которую не смогло погасить ничего. Она не случайна. Сформулируйте одно желание, в которое боитесь верить, и запишите один реальный шаг в его сторону на этой неделе.", image: "images/card_17.png", accent: "#80c0ff" },
+        { title: "XVIII. Луна", desc: "Тревога, которая не даёт покоя — это не предчувствие катастрофы, это непрожитый страх, который требует внимания. Луна показывает иллюзии, а не реальность. Выпишите всё, что вас пугает прямо сейчас. Написанное теряет власть над вами.", image: "images/card_18.png", accent: "#6040a0" },
+        { title: "XIX. Солнце", desc: "Сегодня у вас есть разрешение быть живым, радостным и лёгким — без причины и без заслуг. Вы давно не позволяли себе просто наслаждаться. Сделайте сегодня одно маленькое дело только потому, что оно приносит вам радость. Не для пользы. Просто так.", image: "images/card_19.png", accent: "#ffcc40" },
+        { title: "XX. Суд", desc: "Что-то внутри давно зовёт вас стать другим — не лучше в чужих глазах, а честнее с собой. Вы слышите этот зов, но откладываете. Напишите одно качество или роль, от которой вы готовы отказаться, и одно — которое хотите в себе развить.", image: "images/card_20.png", accent: "#c0a060" },
+        { title: "XXI. Мир", desc: "Один важный цикл завершён — и это требует признания, а не гонки к следующей цели. Остановитесь на минуту и перечислите три вещи, с которыми вы справились за последнее время. Вы прошли дальше, чем думаете. Это стоит того, чтобы это заметить.", image: "images/card_21.png", accent: "#60d080" }
+    ];
+
+    const SPREAD_META = {
+        one:   { label: "Карта дня",                        positions: ["Послание"] },
+        three: { label: "Прошлое · Настоящее · Будущее",   positions: ["Прошлое", "Настоящее", "Будущее"] },
+        cross: { label: "Кельтский крест",                  positions: ["Над вами", "Слева", "Центр", "Справа", "Под вами"] }
+    };
+
+    // ===== СОСТОЯНИЕ =====
+    let currentSpread = null;
+    let drawnCards    = [];
+    let flippedCount  = 0;
+    let countdownTimer = null;
+
+    // ===== ЗНАК ЗОДИАКА =====
+    function getZodiac() {
+        try { return localStorage.getItem('fatum_zodiac') || ''; } catch(e) { return ''; }
+    }
+
+    function saveZodiac(sign) {
+        try { localStorage.setItem('fatum_zodiac', sign); } catch(e) {}
+    }
+
+    function selectZodiac(sign) {
+        tg.HapticFeedback.impactOccurred('medium');
+        saveZodiac(sign);
+        // Если пришли из настроек — возвращаемся туда
+        const fromSettings = document.getElementById('settingsScreen').dataset.zodiacFrom === '1';
+        if (fromSettings) {
+            document.getElementById('settingsScreen').dataset.zodiacFrom = '';
+            updateSettingsValues();
+            fadeSwitch('zodiacScreen', 'settingsScreen');
+        } else {
+            fadeSwitch('zodiacScreen', 'spreadScreen');
+        }
+    }
+
+    // ===== НАСТРОЙКИ =====
+    function openSettings() {
+        tg.HapticFeedback.impactOccurred('light');
+        updateSettingsValues();
+        fadeSwitch('spreadScreen', 'settingsScreen');
+    }
+
+    function closeSettings() {
+        tg.HapticFeedback.impactOccurred('light');
+        fadeSwitch('settingsScreen', 'spreadScreen');
+    }
+
+    function changeZodiac() {
+        tg.HapticFeedback.impactOccurred('light');
+        document.getElementById('settingsScreen').dataset.zodiacFrom = '1';
+        fadeSwitch('settingsScreen', 'zodiacScreen');
+    }
+
+    function updateSettingsValues() {
+        const zodiac = getZodiac();
+        const notifEl = document.getElementById('settingsNotifValue');
+        const zodiacEl = document.getElementById('settingsZodiacValue');
+        if (zodiacEl) zodiacEl.textContent = zodiac || 'Не выбран';
+        if (notifEl) {
+            try {
+                notifEl.textContent = localStorage.getItem('subscribed_daily') ? 'Вкл ✓' : 'Выкл';
+            } catch(e) {}
+        }
+    }
+
+    // ===== ЛИМИТ (localStorage) =====
+    function getTodayKey() {
+        const d = new Date();
+        return `fatum_${d.getFullYear()}_${d.getMonth()}_${d.getDate()}`;
+    }
+
+    function getDayData() {
+        try {
+            const raw = localStorage.getItem(getTodayKey());
+            return raw ? JSON.parse(raw) : { used: 0 };
+        } catch(e) { return { used: 0 }; }
+    }
+
+    function saveDayData(data) {
+        try { localStorage.setItem(getTodayKey(), JSON.stringify(data)); } catch(e) {}
+    }
+
+    function canDoSpread() {
+        const d = getDayData();
+        return (d.used || 0) < 1;
+    }
+
+    function markSpreadUsed() {
+        const d = getDayData();
+        d.used = (d.used || 0) + 1;
+        saveDayData(d);
+    }
+
+    // ===== ОБРАТНЫЙ ОТСЧЁТ =====
+    function updateCountdown() {
+        const el = document.getElementById('paywallCountdown');
+        if (!el) return;
+        const now = new Date();
+        const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+        const diff = tomorrow - now;
+        const h = String(Math.floor(diff / 3600000)).padStart(2, '0');
+        const m = String(Math.floor((diff % 3600000) / 60000)).padStart(2, '0');
+        const s = String(Math.floor((diff % 60000) / 1000)).padStart(2, '0');
+        el.textContent = `${h}:${m}:${s}`;
+    }
+
+
+    // ===== НАПОМИНАНИЕ =====
+    function checkReminder() {
+        const d = getDayData();
+        if ((d.used || 0) === 0) {
+            const banner = document.getElementById('reminderBanner');
+            banner.classList.add('show');
+            setTimeout(() => banner.classList.remove('show'), 5000);
+        }
+    }
+
+    // ===== ПОДПИСКА =====
+    function subscribeToDaily() {
+        tg.HapticFeedback.impactOccurred('medium');
+        try {
+            const subscribed = localStorage.getItem('subscribed_daily');
+            if (subscribed) {
+                tg.openTelegramLink('https://t.me/anti_fatum_bot?start=unsubscribe');
+                return;
+            }
+            localStorage.setItem('subscribed_daily', '1');
+        } catch(e) {}
+        tg.openTelegramLink('https://t.me/anti_fatum_bot?start=subscribe');
+        updateSubscribeBtn();
+    }
+
+    function updateSubscribeBtn() {
+        try {
+            const subscribed = localStorage.getItem('subscribed_daily');
+            const btn  = document.getElementById('subscribeBtn');
+            const text = document.getElementById('subscribeBtnText');
+            if (subscribed && btn && text) {
+                text.textContent = 'Подписка активна ✓';
+                btn.style.borderColor = 'rgba(96,200,96,0.5)';
+                btn.style.color = '#60c060';
+                btn.style.background = 'rgba(96,200,96,0.06)';
+            }
+        } catch(e) {}
+    }
+
+    // ===== НАВИГАЦИЯ =====
+    function goToSpread() {
+        tg.HapticFeedback.impactOccurred('medium');
+        if (!getZodiac()) {
+            fadeSwitch('focusScreen', 'zodiacScreen');
+        } else {
+            fadeSwitch('focusScreen', 'spreadScreen');
+        }
+    }
+
+    function backFromPaywall() {
+        tg.HapticFeedback.impactOccurred('light');
+        if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+        fadeSwitch('paywallScreen', 'spreadScreen');
+    }
+
+    function startSpread(type) {
+        tg.HapticFeedback.impactOccurred('medium');
+
+        // Проверяем лимит
+        if (!canDoSpread()) {
+            updateCountdown();
+            if (!countdownTimer) countdownTimer = setInterval(updateCountdown, 1000);
+            fadeSwitch('spreadScreen', 'paywallScreen');
+            return;
+        }
+
+        markSpreadUsed();
+
+        currentSpread = type;
+        drawnCards    = [];
+        flippedCount  = 0;
+
+        const meta  = SPREAD_META[type];
+        const count = meta.positions.length;
+
+        // Случайные уникальные карты
+        const pool = [...Array(cards.length).keys()];
+        for (let i = pool.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [pool[i], pool[j]] = [pool[j], pool[i]];
+        }
+        for (let i = 0; i < count; i++) drawnCards.push(cards[pool[i]]);
+
+        document.getElementById('spreadLabel').textContent = meta.label;
+        document.getElementById('dayBadge').style.display  = type === 'one' ? 'block' : 'none';
+
+        buildCards(type, meta.positions);
+        buildInfoBlocks(meta.positions);
+
+        fadeSwitch('spreadScreen', 'appScreen');
+    }
+
+    function buildCards(type, positions) {
+        const area = document.getElementById('cardsArea');
+        area.innerHTML = '';
+        area.className = '';
+
+        if (type === 'cross')       area.classList.add('cross-grid', 'spread-cross');
+        else if (type === 'three')  area.classList.add('cards-row', 'spread-3');
+        else                        area.classList.add('cards-row', 'spread-1');
+
+        positions.forEach((pos, i) => {
+            const slot = document.createElement('div');
+            slot.className = 'card-slot';
+
+            const lbl = document.createElement('div');
+            lbl.className = 'card-slot-label';
+            lbl.textContent = type !== 'one' ? pos : '';
+
+            const container = document.createElement('div');
+            container.className = 'card-container';
+            container.onclick = () => flipCard(i);
+
+            container.innerHTML = `
+                <div class="card-inner" id="card-inner-${i}">
+                    <div class="card-face card-front"></div>
+                    <div class="card-face card-back" id="card-back-${i}">
+                        <img src="" alt="Карта" id="card-img-${i}">
+                    </div>
+                </div>`;
+
+            slot.appendChild(lbl);
+            slot.appendChild(container);
+            area.appendChild(slot);
+        });
+    }
+
+    function buildInfoBlocks(positions) {
+        const info = document.getElementById('cardsInfo');
+        info.innerHTML = '';
+        positions.forEach((pos, i) => {
+            const block = document.createElement('div');
+            block.className = 'card-info-block';
+            block.id = `info-block-${i}`;
+            block.innerHTML = `
+                <div class="card-info-position">${positions.length > 1 ? pos : ''}</div>
+                <div class="card-info-title" id="info-title-${i}"></div>
+                <div class="card-info-desc"  id="info-desc-${i}"></div>`;
+            info.appendChild(block);
+        });
+    }
+
+    // ===== ПЕРЕВОРОТ КАРТЫ =====
+    function flipCard(idx) {
+        const inner = document.getElementById(`card-inner-${idx}`);
+        if (!inner || inner.classList.contains('is-flipped')) return;
+
+        tg.HapticFeedback.impactOccurred('heavy');
+
+        const card = drawnCards[idx];
+        const back = document.getElementById(`card-back-${idx}`);
+        back.style.boxShadow = `0 0 25px ${card.accent || '#6060ff'}`;
+
+        document.getElementById(`card-img-${idx}`).src = card.image;
+        inner.classList.add('is-flipped');
+        flippedCount++;
+
+        // Скрыть подсказку после первого переворота
+        if (flippedCount === 1) {
+            const hint = document.getElementById('tapHint');
+            if (hint) hint.style.opacity = '0';
+        }
+
+        setTimeout(() => {
+            tg.HapticFeedback.impactOccurred('light');
+            document.getElementById(`info-title-${idx}`).textContent = card.title;
+            const zodiac = getZodiac();
+            const zodiacLine = zodiac ? `\n\n${zodiac}, это послание для вас.` : '';
+            document.getElementById(`info-desc-${idx}`).textContent = card.desc + zodiacLine;
+            document.getElementById(`info-block-${idx}`).classList.add('visible');
+        }, 700);
+    }
+
+    // ===== СБРОС =====
+    function resetToStart() {
+        tg.HapticFeedback.impactOccurred('light');
+        fadeSwitch('appScreen', 'focusScreen');
+        setTimeout(() => {
+            document.getElementById('cardsArea').innerHTML = '';
+            document.getElementById('cardsInfo').innerHTML = '';
+            currentSpread = null; drawnCards = []; flippedCount = 0;
+        }, 400);
+    }
+
+    // ===== ПОДЕЛИТЬСЯ =====
+    function shareResult() {
+        if (!drawnCards.length) return;
+        let text = '🔮 Мой расклад Таро сегодня:\n\n';
+        drawnCards.forEach((c, i) => {
+            const pos = SPREAD_META[currentSpread].positions[i];
+            text += currentSpread !== 'one' ? `${pos}: ${c.title}\n` : `${c.title}\n`;
+        });
+        text += `\nПопробуй сам: @anti_fatum_bot`;
+        tg.openTelegramLink(`https://t.me/share/url?url=https://t.me/anti_fatum_bot&text=${encodeURIComponent(text)}`);
+    }
+
+    // ===== FADE SWITCH =====
+    function fadeSwitch(fromId, toId) {
+        const from = document.getElementById(fromId);
+        const to   = document.getElementById(toId);
+        if (!from || !to) return;
+        from.style.opacity = '0';
+        from.style.transition = 'opacity 0.3s ease';
+        setTimeout(() => {
+            from.style.display = 'none';
+            from.style.opacity = '';
+            from.style.transition = '';
+            to.style.display = 'flex';
+            to.classList.add('screen-fade');
+            setTimeout(() => to.classList.remove('screen-fade'), 500);
+        }, 300);
+    }
+
+    // ===== ИНИЦИАЛИЗАЦИЯ =====
+    checkReminder();
+    updateSubscribeBtn();
+</script>
+</body>
+</html>
